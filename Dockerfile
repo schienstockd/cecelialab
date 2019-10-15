@@ -18,3 +18,13 @@ RUN conda install --quiet --yes \
     conda clean --all -f -y && \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
+
+# Install Python modules
+COPY requirements.txt /tmp/
+RUN conda install --yes --file /tmp/requirements.txt && \
+    fix-permissions $CONDA_DIR && \
+    fix-permissions /home/$NB_USER
+
+# Install R libraries
+RUN R -e "install.packages('openCyto')\
+	install.packages('ggcyto')"
