@@ -17,4 +17,4 @@ RUN conda install --quiet --yes \
     'keras=2.2*' && \
     conda clean --all -f -y && \
     fix-permissions $CONDA_DIR && \
-fix-permissions /home/$NB_USER
+    fix-permissions /home/$NB_USER
