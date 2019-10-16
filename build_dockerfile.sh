@@ -6,6 +6,12 @@ cd docker-stacks
 git pull
 cd ..
 
+# copy files/directories from base-notebook
+cp -rf ./docker-stacks/base-notebook/test ./
+cp ./docker-stacks/base-notebook/*.sh ./
+cp ./docker-stacks/base-notebook/*.py ./
+cp ./docker-stacks/base-notebook/fix-permissions ./
+
 # define base image
 cat Dockerfile.base > Dockerfile.tmp
 
@@ -16,6 +22,8 @@ jpt_dockerfiles=(
 	"scipy"
 	"datascience"
 )
+
+echo "# ! FROM https://github.com/jupyter/docker-stacks" >> Dockerfile.tmp
 
 for i in "${jpt_dockerfiles[@]}"
 do
