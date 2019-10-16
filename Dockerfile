@@ -2,202 +2,6 @@ ARG BASE_CONTAINER=nvidia/cuda:latest
 FROM $BASE_CONTAINER
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
-ARG BASE_CONTAINER=jupyter/scipy-notebook
-
-LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
-
-# Set when building on Travis so that certain long-running build steps can
-# be skipped to shorten build time.
-ARG TEST_ONLY_BUILD
-
-USER root
-
-# R pre-requisites
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    fonts-dejavu \
-    gfortran \
-    gcc && \
-    rm -rf /var/lib/apt/lists/*
-
-# Julia dependencies
-# install Julia packages in /opt/julia instead of $HOME
-ENV JULIA_DEPOT_PATH=/opt/julia
-ENV JULIA_PKGDIR=/opt/julia
-ENV JULIA_VERSION=1.2.0
-
-RUN mkdir /opt/julia-${JULIA_VERSION} && \
-    cd /tmp && \
-    wget -q https://julialang-s3.julialang.org/bin/linux/x64/`echo ${JULIA_VERSION} | cut -d. -f 1,2`/julia-${JULIA_VERSION}-linux-x86_64.tar.gz && \
-    echo "926ced5dec5d726ed0d2919e849ff084a320882fb67ab048385849f9483afc47 *julia-${JULIA_VERSION}-linux-x86_64.tar.gz" | sha256sum -c - && \
-    tar xzf julia-${JULIA_VERSION}-linux-x86_64.tar.gz -C /opt/julia-${JULIA_VERSION} --strip-components=1 && \
-    rm /tmp/julia-${JULIA_VERSION}-linux-x86_64.tar.gz
-RUN ln -fs /opt/julia-*/bin/julia /usr/local/bin/julia
-
-# Show Julia where conda libraries are \
-RUN mkdir /etc/julia && \
-    echo "push!(Libdl.DL_LOAD_PATH, \"$CONDA_DIR/lib\")" >> /etc/julia/juliarc.jl && \
-    # Create JULIA_PKGDIR \
-    mkdir $JULIA_PKGDIR && \
-    chown $NB_USER $JULIA_PKGDIR && \
-    fix-permissions $JULIA_PKGDIR
-
-USER $NB_UID
-
-# R packages including IRKernel which gets installed globally.
-RUN conda install --quiet --yes \
-    'r-base=3.6.1' \
-    'r-caret=6.0*' \
-    'r-crayon=1.3*' \
-    'r-devtools=2.1*' \
-    'r-forecast=8.7*' \
-    'r-hexbin=1.27*' \
-    'r-htmltools=0.3*' \
-    'r-htmlwidgets=1.3*' \
-    'r-irkernel=1.0*' \
-    'r-nycflights13=1.0*' \
-    'r-plyr=1.8*' \
-    'r-randomforest=4.6*' \
-    'r-rcurl=1.95*' \
-    'r-reshape2=1.4*' \
-    'r-rmarkdown=1.14*' \
-    'r-rsqlite=2.1*' \
-    'r-shiny=1.3*' \
-    'r-sparklyr=1.0*' \
-    'r-tidyverse=1.2*' \
-    'rpy2=2.9*' \
-    && \
-    conda clean --all -f -y && \
-    fix-permissions $CONDA_DIR && \
-    fix-permissions /home/$NB_USER
-
-# Add Julia packages. Only add HDF5 if this is not a test-only build since
-# it takes roughly half the entire build time of all of the images on Travis
-# to add this one package and often causes Travis to timeout.
-#
-# Install IJulia as jovyan and then move the kernelspec out
-# to the system share location. Avoids problems with runtime UID change not
-# taking effect properly on the .local folder in the jovyan home dir.
-RUN julia -e 'import Pkg; Pkg.update()' && \
-    (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("HDF5")') && \
-    julia -e "using Pkg; pkg\"add IJulia\"; pkg\"precompile\"" && \ 
-    # move kernelspec out of home \
-    mv $HOME/.local/share/jupyter/kernels/julia* $CONDA_DIR/share/jupyter/kernels/ && \
-    chmod -R go+rx $CONDA_DIR/share/jupyter && \
-    rm -rf $HOME/.local && \
-    fix-permissions $JULIA_PKGDIR $CONDA_DIR/share/jupyter
-# Copyright (c) Jupyter Development Team.
-# Distributed under the terms of the Modified BSD License.
-ARG BASE_CONTAINER=jupyter/minimal-notebook
-
-LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
-
-USER root
-
-# ffmpeg for matplotlib anim
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg && \
-    rm -rf /var/lib/apt/lists/*
-
-USER $NB_UID
-
-# Install Python 3 packages
-RUN conda install --quiet --yes \
-    'beautifulsoup4=4.8.*' \
-    'conda-forge::blas=*=openblas' \
-    'bokeh=1.3*' \
-    'cloudpickle=1.2*' \
-    'cython=0.29*' \
-    'dask=2.2.*' \
-    'dill=0.3*' \
-    'h5py=2.9*' \
-    'hdf5=1.10*' \
-    'ipywidgets=7.5*' \
-    'matplotlib-base=3.1.*' \
-    'numba=0.45*' \
-    'numexpr=2.6*' \
-    'pandas=0.25*' \
-    'patsy=0.5*' \
-    'protobuf=3.9.*' \
-    'scikit-image=0.15*' \
-    'scikit-learn=0.21*' \
-    'scipy=1.3*' \
-    'seaborn=0.9*' \
-    'sqlalchemy=1.3*' \
-    'statsmodels=0.10*' \
-    'sympy=1.4*' \
-    'vincent=0.4.*' \
-    'xlrd' \
-    && \
-    conda clean --all -f -y && \
-    # Activate ipywidgets extension in the environment that runs the notebook server
-    jupyter nbextension enable --py widgetsnbextension --sys-prefix && \
-    # Also activate ipywidgets extension for JupyterLab
-    # Check this URL for most recent compatibilities
-    # https://github.com/jupyter-widgets/ipywidgets/tree/master/packages/jupyterlab-manager
-    jupyter labextension install @jupyter-widgets/jupyterlab-manager@^1.0.1 --no-build && \
-    jupyter labextension install jupyterlab_bokeh@1.0.0 --no-build && \
-    jupyter lab build --dev-build=False && \
-    npm cache clean --force && \
-    rm -rf $CONDA_DIR/share/jupyter/lab/staging && \
-    rm -rf /home/$NB_USER/.cache/yarn && \
-    rm -rf /home/$NB_USER/.node-gyp && \
-    fix-permissions $CONDA_DIR && \
-    fix-permissions /home/$NB_USER
-
-# Install facets which does not have a pip or conda package at the moment
-RUN cd /tmp && \
-    git clone https://github.com/PAIR-code/facets.git && \
-    cd facets && \
-    jupyter nbextension install facets-dist/ --sys-prefix && \
-    cd && \
-    rm -rf /tmp/facets && \
-    fix-permissions $CONDA_DIR && \
-    fix-permissions /home/$NB_USER
-
-# Import matplotlib the first time to build the font cache.
-ENV XDG_CACHE_HOME /home/$NB_USER/.cache/
-RUN MPLBACKEND=Agg python -c "import matplotlib.pyplot" && \
-    fix-permissions /home/$NB_USER
-
-USER $NB_UID
-# Copyright (c) Jupyter Development Team.
-# Distributed under the terms of the Modified BSD License.
-ARG BASE_CONTAINER=jupyter/base-notebook
-
-LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
-
-USER root
-
-# Install all OS dependencies for fully functional notebook server
-RUN apt-get update && apt-get install -yq --no-install-recommends \
-    build-essential \
-    emacs \
-    git \
-    inkscape \
-    jed \
-    libsm6 \
-    libxext-dev \
-    libxrender1 \
-    lmodern \
-    netcat \
-    pandoc \
-    python-dev \
-    texlive-fonts-extra \
-    texlive-fonts-recommended \
-    texlive-generic-recommended \
-    texlive-latex-base \
-    texlive-latex-extra \
-    texlive-xetex \
-    tzdata \
-    unzip \
-    nano \
-    && rm -rf /var/lib/apt/lists/*
-
-# Switch back to jovyan to avoid accidental container runs as root
-USER $NB_UID
-# Copyright (c) Jupyter Development Team.
-# Distributed under the terms of the Modified BSD License.
 
 # Ubuntu 18.04 (bionic) from 2019-06-12
 # https://github.com/tianon/docker-brew-ubuntu-core/commit/3c462555392cb188830b7c91e29311b5fad90cfe
@@ -328,6 +132,202 @@ RUN fix-permissions /etc/jupyter/
 
 # Switch back to jovyan to avoid accidental container runs as root
 USER $NB_UID
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+ARG BASE_CONTAINER=jupyter/base-notebook
+
+LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
+
+USER root
+
+# Install all OS dependencies for fully functional notebook server
+RUN apt-get update && apt-get install -yq --no-install-recommends \
+    build-essential \
+    emacs \
+    git \
+    inkscape \
+    jed \
+    libsm6 \
+    libxext-dev \
+    libxrender1 \
+    lmodern \
+    netcat \
+    pandoc \
+    python-dev \
+    texlive-fonts-extra \
+    texlive-fonts-recommended \
+    texlive-generic-recommended \
+    texlive-latex-base \
+    texlive-latex-extra \
+    texlive-xetex \
+    tzdata \
+    unzip \
+    nano \
+    && rm -rf /var/lib/apt/lists/*
+
+# Switch back to jovyan to avoid accidental container runs as root
+USER $NB_UID
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+ARG BASE_CONTAINER=jupyter/minimal-notebook
+
+LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
+
+USER root
+
+# ffmpeg for matplotlib anim
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
+USER $NB_UID
+
+# Install Python 3 packages
+RUN conda install --quiet --yes \
+    'beautifulsoup4=4.8.*' \
+    'conda-forge::blas=*=openblas' \
+    'bokeh=1.3*' \
+    'cloudpickle=1.2*' \
+    'cython=0.29*' \
+    'dask=2.2.*' \
+    'dill=0.3*' \
+    'h5py=2.9*' \
+    'hdf5=1.10*' \
+    'ipywidgets=7.5*' \
+    'matplotlib-base=3.1.*' \
+    'numba=0.45*' \
+    'numexpr=2.6*' \
+    'pandas=0.25*' \
+    'patsy=0.5*' \
+    'protobuf=3.9.*' \
+    'scikit-image=0.15*' \
+    'scikit-learn=0.21*' \
+    'scipy=1.3*' \
+    'seaborn=0.9*' \
+    'sqlalchemy=1.3*' \
+    'statsmodels=0.10*' \
+    'sympy=1.4*' \
+    'vincent=0.4.*' \
+    'xlrd' \
+    && \
+    conda clean --all -f -y && \
+    # Activate ipywidgets extension in the environment that runs the notebook server
+    jupyter nbextension enable --py widgetsnbextension --sys-prefix && \
+    # Also activate ipywidgets extension for JupyterLab
+    # Check this URL for most recent compatibilities
+    # https://github.com/jupyter-widgets/ipywidgets/tree/master/packages/jupyterlab-manager
+    jupyter labextension install @jupyter-widgets/jupyterlab-manager@^1.0.1 --no-build && \
+    jupyter labextension install jupyterlab_bokeh@1.0.0 --no-build && \
+    jupyter lab build --dev-build=False && \
+    npm cache clean --force && \
+    rm -rf $CONDA_DIR/share/jupyter/lab/staging && \
+    rm -rf /home/$NB_USER/.cache/yarn && \
+    rm -rf /home/$NB_USER/.node-gyp && \
+    fix-permissions $CONDA_DIR && \
+    fix-permissions /home/$NB_USER
+
+# Install facets which does not have a pip or conda package at the moment
+RUN cd /tmp && \
+    git clone https://github.com/PAIR-code/facets.git && \
+    cd facets && \
+    jupyter nbextension install facets-dist/ --sys-prefix && \
+    cd && \
+    rm -rf /tmp/facets && \
+    fix-permissions $CONDA_DIR && \
+    fix-permissions /home/$NB_USER
+
+# Import matplotlib the first time to build the font cache.
+ENV XDG_CACHE_HOME /home/$NB_USER/.cache/
+RUN MPLBACKEND=Agg python -c "import matplotlib.pyplot" && \
+    fix-permissions /home/$NB_USER
+
+USER $NB_UID
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+ARG BASE_CONTAINER=jupyter/scipy-notebook
+
+LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
+
+# Set when building on Travis so that certain long-running build steps can
+# be skipped to shorten build time.
+ARG TEST_ONLY_BUILD
+
+USER root
+
+# R pre-requisites
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    fonts-dejavu \
+    gfortran \
+    gcc && \
+    rm -rf /var/lib/apt/lists/*
+
+# Julia dependencies
+# install Julia packages in /opt/julia instead of $HOME
+ENV JULIA_DEPOT_PATH=/opt/julia
+ENV JULIA_PKGDIR=/opt/julia
+ENV JULIA_VERSION=1.2.0
+
+RUN mkdir /opt/julia-${JULIA_VERSION} && \
+    cd /tmp && \
+    wget -q https://julialang-s3.julialang.org/bin/linux/x64/`echo ${JULIA_VERSION} | cut -d. -f 1,2`/julia-${JULIA_VERSION}-linux-x86_64.tar.gz && \
+    echo "926ced5dec5d726ed0d2919e849ff084a320882fb67ab048385849f9483afc47 *julia-${JULIA_VERSION}-linux-x86_64.tar.gz" | sha256sum -c - && \
+    tar xzf julia-${JULIA_VERSION}-linux-x86_64.tar.gz -C /opt/julia-${JULIA_VERSION} --strip-components=1 && \
+    rm /tmp/julia-${JULIA_VERSION}-linux-x86_64.tar.gz
+RUN ln -fs /opt/julia-*/bin/julia /usr/local/bin/julia
+
+# Show Julia where conda libraries are \
+RUN mkdir /etc/julia && \
+    echo "push!(Libdl.DL_LOAD_PATH, \"$CONDA_DIR/lib\")" >> /etc/julia/juliarc.jl && \
+    # Create JULIA_PKGDIR \
+    mkdir $JULIA_PKGDIR && \
+    chown $NB_USER $JULIA_PKGDIR && \
+    fix-permissions $JULIA_PKGDIR
+
+USER $NB_UID
+
+# R packages including IRKernel which gets installed globally.
+RUN conda install --quiet --yes \
+    'r-base=3.6.1' \
+    'r-caret=6.0*' \
+    'r-crayon=1.3*' \
+    'r-devtools=2.1*' \
+    'r-forecast=8.7*' \
+    'r-hexbin=1.27*' \
+    'r-htmltools=0.3*' \
+    'r-htmlwidgets=1.3*' \
+    'r-irkernel=1.0*' \
+    'r-nycflights13=1.0*' \
+    'r-plyr=1.8*' \
+    'r-randomforest=4.6*' \
+    'r-rcurl=1.95*' \
+    'r-reshape2=1.4*' \
+    'r-rmarkdown=1.14*' \
+    'r-rsqlite=2.1*' \
+    'r-shiny=1.3*' \
+    'r-sparklyr=1.0*' \
+    'r-tidyverse=1.2*' \
+    'rpy2=2.9*' \
+    && \
+    conda clean --all -f -y && \
+    fix-permissions $CONDA_DIR && \
+    fix-permissions /home/$NB_USER
+
+# Add Julia packages. Only add HDF5 if this is not a test-only build since
+# it takes roughly half the entire build time of all of the images on Travis
+# to add this one package and often causes Travis to timeout.
+#
+# Install IJulia as jovyan and then move the kernelspec out
+# to the system share location. Avoids problems with runtime UID change not
+# taking effect properly on the .local folder in the jovyan home dir.
+RUN julia -e 'import Pkg; Pkg.update()' && \
+    (test $TEST_ONLY_BUILD || julia -e 'import Pkg; Pkg.add("HDF5")') && \
+    julia -e "using Pkg; pkg\"add IJulia\"; pkg\"precompile\"" && \ 
+    # move kernelspec out of home \
+    mv $HOME/.local/share/jupyter/kernels/julia* $CONDA_DIR/share/jupyter/kernels/ && \
+    chmod -R go+rx $CONDA_DIR/share/jupyter && \
+    rm -rf $HOME/.local && \
+    fix-permissions $JULIA_PKGDIR $CONDA_DIR/share/jupyter
 LABEL maintainer="Cecelia lab - cell-cell interaction analysis <schienstockd@student.unimelb.edu.au>"
 
 # Install Tensorflow

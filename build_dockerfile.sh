@@ -13,7 +13,7 @@ cat Dockerfile.base > Dockerfile.tmp
 jpt_dockerfiles=(
 	"base"
 	"minimal"
-	"scipy
+	"scipy"
 	"datascience"
 )
 
