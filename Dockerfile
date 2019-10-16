@@ -12,12 +12,12 @@ FROM $BASE_CONTAINER
 LABEL maintainer="Cecelia lab - cell-cell interaction analysis <schienstockd@student.unimelb.edu.au>"
 
 # Install Tensorflow
-RUN conda install --quiet --yes \
-    'tensorflow=1.13*' \
-    'keras=2.2*' && \
-    conda clean --all -f -y && \
-    fix-permissions $CONDA_DIR && \
-    fix-permissions /home/$NB_USER
+# RUN conda install --quiet --yes \
+#    'tensorflow=1.13*' \
+#    'keras=2.2*' && \
+#    conda clean --all -f -y && \
+#    fix-permissions $CONDA_DIR && \
+#    fix-permissions /home/$NB_USER
 
 # Install Python modules
 COPY requirements.txt /tmp/
