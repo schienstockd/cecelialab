@@ -26,5 +26,8 @@ RUN pip install --requirement /tmp/requirements.txt && \
     fix-permissions /home/$NB_USER
 
 # Install R libraries
-COPY install_libraries.R /tmp/
-RUN Rscript /tmp/install_libraries.R
+# COPY install_biocmanager.R /tmp/
+# COPY install_libraries.R /tmp/
+
+# RUN Rscript /tmp/install_biocmanager.R
+# RUN Rscript /tmp/install_libraries.R

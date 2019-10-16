@@ -1,5 +1,5 @@
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager", repos="http://cran.rstudio.com/")
-
-BiocManager::install("openCyto")
+BiocManager::install("flowStats")
+BiocManager::install("ncdfFlow")
+BiocManager::install("flowWorkspace")
 BiocManager::install("ggcyto")
+BiocManager::install("openCyto")
