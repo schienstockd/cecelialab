@@ -1,4 +1,4 @@
-ARG BASE_CONTAINER=nvidia/cuda:latest
+ARG BASE_CONTAINER=tensorflow/tensorflow:1.8.0-gpu-py3
 FROM $BASE_CONTAINER
 # ! FROM https://github.com/jupyter/docker-stacks
 # Copyright (c) Jupyter Development Team.
