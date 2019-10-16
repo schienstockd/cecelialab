@@ -11,10 +11,10 @@ cat Dockerfile.base > Dockerfile.tmp
 
 # get Dockerfile definitions and merge together
 jpt_dockerfiles=(
-	"datascience"
-	"scipy"
+	"base"
 	"minimal"
-	"base"	
+	"scipy
+	"datascience"
 )
 
 for i in "${jpt_dockerfiles[@]}"
