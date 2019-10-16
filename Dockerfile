@@ -26,5 +26,5 @@ RUN pip install --requirement /tmp/requirements.txt && \
     fix-permissions /home/$NB_USER
 
 # Install R libraries
-RUN R -e "install.packages('openCyto')\
-	install.packages('ggcyto')"
+COPY install_libraries.R /tmp/
+RUN Rscript /tmp/install_libraries.R
