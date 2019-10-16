@@ -2,7 +2,7 @@ ARG BASE_CONTAINER=nvidia/cuda:latest
 ARG COPY_CONTAINER=jupyter/datascience-notebook:latest
 
 FROM $BASE_CONTAINER
-COPY --from=$COPY_CONTAINER
+COPY --from=$COPY_CONTAINER / /
 
 LABEL maintainer="Cecelia lab - cell-cell interaction analysis <schienstockd@student.unimelb.edu.au>"
 
