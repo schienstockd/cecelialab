@@ -21,7 +21,7 @@ RUN conda install --quiet --yes \
 
 # Install Python modules
 COPY requirements.txt /tmp/
-RUN conda install --yes --file /tmp/requirements.txt && \
+RUN pip install --requirement /tmp/requirements.txt && \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
 
