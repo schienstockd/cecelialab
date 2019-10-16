@@ -1,0 +1,2 @@
+ARG BASE_CONTAINER=nvidia/cuda:latest
+FROM $BASE_CONTAINER

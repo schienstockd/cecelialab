@@ -1,3 +1,6 @@
+# Jupyter Docker files
+docker-stacks/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
