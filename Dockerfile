@@ -4,6 +4,8 @@
 ARG BASE_CONTAINER=tensorflow/tensorflow:1.14.0-gpu-py3
 FROM $BASE_CONTAINER
 
+LABEL maintainer="Dominik Schienstock <schienstockd@student.unimelb.edu.au>"
+
 ARG CYTOKIT_REPO_URL="https://github.com/hammerlab/cytokit.git"
 ARG CECELIA_REPO_URL="https://github.com/schienstockd/cecelia.git"
 
@@ -16,6 +18,9 @@ ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
     MINICONDA_VERSION=4.7.12 \
     PYTHON_VERSION=3.7.4
+
+# Run install as root
+USER root
 
 RUN mkdir -p $LAB_DIR $REPO_DIR $DATA_DIR $SIM_DIR
 
@@ -32,6 +37,15 @@ RUN apt-get install -y libsm6 libxext6 libfontconfig1 libxrender1 python3-tk
 # Env Initialization #
 ######################
 
+# Run all as user to avoid root
+ENV HOME=/home/$NB_USER
+ARG NB_USER="rotund"
+ARG NB_UID="1000"
+ARG NB_GID="100"
+
+USER $NB_UID
+WORKDIR $HOME
+
 # Install conda and initialize primary environment
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-${MINICONDA_VERSION}-Linux-x86_64.sh -O ~/miniconda.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
@@ -46,6 +60,8 @@ RUN pip install --upgrade pip
 # Install Python modules
 COPY requirements.txt /tmp/
 RUN pip --no-cache-dir install --requirement /tmp/requirements.txt
+
+# Change to working user
 
 # Clone cytokit repo
 RUN cd $REPO_DIR && git clone $CYTOKIT_REPO_URL
