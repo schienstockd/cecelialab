@@ -86,6 +86,6 @@ EXPOSE 8888
 
 # Create cli links at runtime instead of container buildtime due to source scripts being
 # in repos mounted at runtime
-CMD chmod a+x $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py && \
-    ln -s $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py /usr/local/bin/cytokit && \
-    jupyter lab --allow-root --ip=0.0.0.0
+RUN chmod a+x $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py && \
+    ln -s $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py /usr/local/bin/cytokit &&
+CMD jupyter lab --allow-root --ip=0.0.0.0
