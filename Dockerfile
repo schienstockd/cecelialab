@@ -82,6 +82,8 @@ ENV SHELL /bin/bash
 # See here for discussion: https://github.com/h5py/h5py/issues/961
 ENV PYTHONWARNINGS "ignore::FutureWarning:h5py"
 
+EXPOSE 8888
+
 # Create cli links at runtime instead of container buildtime due to source scripts being
 # in repos mounted at runtime
 CMD chmod a+x $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py && \
