@@ -19,6 +19,9 @@ ENV LC_ALL=C.UTF-8 \
 
 RUN mkdir -p $LAB_DIR $REPO_DIR $DATA_DIR $SIM_DIR
 
+# Otherwise there will be prompts during install
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN apt-get update && apt-get install -y --no-install-recommends git vim wget
 RUN pip install --upgrade pip
 
@@ -64,11 +67,9 @@ RUN mkdir $REPO_DIR/.nodeenv && \
     . jupyterlab/bin/activate && \
     jupyter labextension install @jupyter-widgets/jupyterlab-manager itk-jupyter-widgets
 
-
 #########
 # Login #
 #########
-
 WORKDIR "/lab"
 
 ENV CYTOKIT_DATA_DIR $DATA_DIR
