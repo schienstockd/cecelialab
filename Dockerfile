@@ -1,13 +1,7 @@
-# Adapted from the following Dockerfiles:
-# https://github.com/hammerlab/cytokit
 ARG BASE_CONTAINER=tensorflow/tensorflow:1.14.0-gpu-py3
 FROM $BASE_CONTAINER
 
 LABEL maintainer="Dominik Schienstock <schienstockd@student.unimelb.edu.au>"
-
-# Add git repositories
-ARG CYTOKIT_REPO_URL="https://github.com/hammerlab/cytokit.git"
-ARG CECELIA_REPO_URL="https://github.com/schienstockd/cecelia.git"
 
 # Run all as user to avoid root
 ENV HOME=/home/$NB_USER
@@ -56,7 +50,7 @@ RUN apt-get update && apt-get -yq dist-upgrade \
     # For R
     fonts-dejavu \
     gfortran \
-    gcc && \
+    gcc \
  && rm -rf /var/lib/apt/lists/*
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
@@ -140,13 +134,6 @@ RUN conda install --quiet --yes \
     rm -rf /home/$NB_USER/.cache/yarn && \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
-
-EXPOSE 8888
-
-# Configure container startup
-# Run tini as PID 1
-ENTRYPOINT ["tini", "-g", "--"]
-CMD ["start-notebook.sh"]
 
 # Add local files as late as possible to avoid cache busting
 COPY start.sh /usr/local/bin/
@@ -290,13 +277,181 @@ RUN julia -e 'import Pkg; Pkg.update()' && \
     chmod -R go+rx $CONDA_DIR/share/jupyter && \
     rm -rf $HOME/.local && \
     fix-permissions $JULIA_PKGDIR $CONDA_DIR/share/jupyter
-
 ###
 # END Build jupyterlab
 ###
 
+###
+# START Cytokit
+# Adopted from https://github.com/hammerlab/cytokit
+###
+# Switch back to root
+USER root
+
+ARG CYTOKIT_REPO_URL="https://github.com/hammerlab/cytokit.git"
+ARG BASE_DIR=/cytokit
+ARG SIM_DIR=$BASE_DIR/lab/sim
+ARG REPO_DIR=$BASE_DIR/lab/repos
+ARG DATA_DIR=$BASE_DIR/lab/data
+ARG CYTOKIT_REPO_DIR=$REPO_DIR/cytokit
+
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
+RUN mkdir -p $LAB_DIR $REPO_DIR $DATA_DIR $SIM_DIR
+
+RUN apt-get update && apt-get install -y --no-install-recommends git vim wget
+RUN pip install --upgrade pip
+
+# OpenCV package dependencies and tk matplotlib backend
+RUN apt-get install -y libsm6 libxext6 libfontconfig1 libxrender1 python3-tk
+
+######################
+# Env Initialization #
+######################
+
+# Install conda and initialize primary environment
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.6.14-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh && \
+    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate cytokit" >> ~/.bashrc && \
+    /bin/bash -c 'source /etc/profile.d/conda.sh && conda create -n cytokit python=3.5.2'
+ENV PATH /opt/conda/envs/cytokit/bin:$PATH
+RUN pip install --upgrade pip
+
+RUN pip --no-cache-dir install \
+    PyYAML==3.13 \
+    numpy==1.16.0 \
+    scipy==1.0.1 \
+    pandas==0.22.0 \
+    tensorflow-gpu==1.8.0 \
+    scikit-image==0.14.2 \
+    scikit-learn==0.20.1 \
+    opencv-python==3.4.3.18 \
+    requests==2.20.1 \
+    matplotlib==2.2.2 \
+    dask==1.0.0 \
+    distributed==1.28.1 \
+    bokeh==1.0.1 \
+    keras==2.2.4 \
+    centrosome==1.1.5 \
+    mahotas==1.4.5 \
+    plotnine==0.4.0 \
+    papermill==1.0.1 \
+    python-dotenv==0.10.3 \
+    jupyterlab==1.0.2 \
+    ipykernel==5.1.1 \
+    fcswrite==0.4.3 \
+    tifffile==2019.7.2 \
+    fire==0.1.3 \
+    seaborn==0.9.0
+
+# Install Flowdec for deconvolution
+RUN pip --no-cache-dir install flowdec
+
+# Download simulation data for testing
+RUN cd $SIM_DIR && \
+    wget -nv https://storage.googleapis.com/musc-codex/datasets/simulations/sim-exp-01.zip && \
+    unzip -q sim-exp-01.zip
+
+# Clone cytokit repo
+RUN cd $REPO_DIR && git clone $CYTOKIT_REPO_URL
+
+# Add any source directories for development to python search path
+RUN mkdir -p $(python -m site --user-site) && \
+    echo "$CYTOKIT_REPO_DIR/python/pipeline" > $(python -m site --user-site)/local.pth && \
+    echo "$CYTOKIT_REPO_DIR/python/notebooks/src" >> $(python -m site --user-site)/local.pth && \
+    echo "$CYTOKIT_REPO_DIR/python/applications" >> $(python -m site --user-site)/local.pth
+
+#############
+# Frontends #
+#############
+
+# Install Dash and per their instructions, freezing specific versions
+# See: https://dash.plot.ly/getting-started
+RUN pip install dash==0.21.1  \
+    dash-renderer==0.13.0 \
+    dash-html-components==0.11.0 \
+    dash-core-components==0.23.0 \
+    plotly
+# Install itkwidgets extension
+RUN mkdir $REPO_DIR/.nodeenv && \
+    cd $REPO_DIR/.nodeenv && \
+    pip install nodeenv==1.3.3 && \
+    nodeenv jupyterlab && \
+    . jupyterlab/bin/activate && \
+    pip install itkwidgets==0.17.0 && \
+    jupyter labextension install @jupyter-widgets/jupyterlab-manager itk-jupyter-widgets
+
+################
+# CellProfiler #
+################
+
+# Install CellProfiler
+RUN /bin/bash -c 'source /etc/profile.d/conda.sh && conda create -n cellprofiler python=2.7' && \
+    apt-get update && \
+    apt-get install -y openjdk-8-jdk libmysqlclient-dev
+# Clone the repo, pin the version, and leave install as separate step
+RUN cd $REPO_DIR && \
+    git clone https://github.com/CellProfiler/CellProfiler.git && \
+    cd CellProfiler && \
+    git checkout v3.1.8
+# Install numpy before CP b/c as of 07/2019, CP has a minimum numpy version but not a max requirement
+# and the numpy>=1.17.x drops support for python 2 (causing errors in the CP install if not set to <1.17 first)
+RUN cd $REPO_DIR/CellProfiler && \
+    /bin/bash -c 'source /etc/profile.d/conda.sh && conda activate cellprofiler && \
+    pip install numpy==1.16.4 PyYAML==3.13 tifffile==2019.7.2 && pip install -e .'
+# Install CP kernel for jupyter (the pinned versions are necessary to avoid pyzmq errors for new kernel)
+RUN /bin/bash -c 'source /etc/profile.d/conda.sh && conda activate cellprofiler && \
+    pip install ipykernel==4.10.0 pyzmq==18.0.2 && \
+    python -m ipykernel install --user --name cellprofiler --display-name "Python (CP)"'
+
+
+#########
+# Login #
+#########
+
+WORKDIR "/lab"
+
+ENV CYTOKIT_SIM_DIR $SIM_DIR
+ENV CYTOKIT_DATA_DIR $DATA_DIR
+ENV CYTOKIT_REPO_DIR $CYTOKIT_REPO_DIR
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/jre
+ENV SHELL /bin/bash
+
+# Eliminate these warnings globally: FutureWarning: Conversion of the second argument of issubdtype from
+# `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`
+# See here for discussion: https://github.com/h5py/h5py/issues/961
+ENV PYTHONWARNINGS "ignore::FutureWarning:h5py"
+
+# Create cli links at runtime instead of container buildtime due to source scripts being
+# in repos mounted at runtime
+CMD
+
+###
+# END Cytokit
+###
+
+###
+# START cecelialab
+###
+# Switch back to user
+USER $NB_UID
+
+ARG CECELIA_REPO_URL="https://github.com/schienstockd/cecelia.git"
+
 # GPU test script
 COPY gpu-test.py $HOME/
+###
+# END cecelialab
+###
 
-# Run command at the start of the container
-CMD $HOME/gpu-test.py
+# Configure container startup
+# Run tini as PID 1
+EXPOSE 8888
+ENTRYPOINT ["tini", "-g", "--"]
+CMD chmod a+x $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py && \
+    ln -s $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py /usr/local/bin/cytokit && \
+    ["start-notebook.sh"]
