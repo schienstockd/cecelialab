@@ -310,51 +310,8 @@ RUN apt-get install -y libsm6 libxext6 libfontconfig1 libxrender1 python3-tk
 # Env Initialization #
 ######################
 
-# Install conda and initialize primary environment
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.6.14-Linux-x86_64.sh -O ~/miniconda.sh && \
-    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    rm ~/miniconda.sh && \
-    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
-    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
-    echo "conda activate cytokit" >> ~/.bashrc && \
-    /bin/bash -c 'source /etc/profile.d/conda.sh && conda create -n cytokit python=3.5.2'
-ENV PATH /opt/conda/envs/cytokit/bin:$PATH
-RUN pip install --upgrade pip
-
-RUN pip --no-cache-dir install \
-    PyYAML==3.13 \
-    numpy==1.16.0 \
-    scipy==1.0.1 \
-    pandas==0.22.0 \
-    tensorflow-gpu==1.8.0 \
-    scikit-image==0.14.2 \
-    scikit-learn==0.20.1 \
-    opencv-python==3.4.3.18 \
-    requests==2.20.1 \
-    matplotlib==2.2.2 \
-    dask==1.0.0 \
-    distributed==1.28.1 \
-    bokeh==1.0.1 \
-    keras==2.2.4 \
-    centrosome==1.1.5 \
-    mahotas==1.4.5 \
-    plotnine==0.4.0 \
-    papermill==1.0.1 \
-    python-dotenv==0.10.3 \
-    jupyterlab==1.0.2 \
-    ipykernel==5.1.1 \
-    fcswrite==0.4.3 \
-    tifffile==2019.7.2 \
-    fire==0.1.3 \
-    seaborn==0.9.0
-
-# Install Flowdec for deconvolution
-RUN pip --no-cache-dir install flowdec
-
-# Download simulation data for testing
-RUN cd $SIM_DIR && \
-    wget -nv https://storage.googleapis.com/musc-codex/datasets/simulations/sim-exp-01.zip && \
-    unzip -q sim-exp-01.zip
+COPY cytokit-requirements.txt /tmp/
+RUN pip --no-cache-dir install --requirement /tmp/cytokit-requirements.txt
 
 # Clone cytokit repo
 RUN cd $REPO_DIR && git clone $CYTOKIT_REPO_URL
@@ -369,25 +326,20 @@ RUN mkdir -p $(python -m site --user-site) && \
 # Frontends #
 #############
 
-# Install Dash and per their instructions, freezing specific versions
-# See: https://dash.plot.ly/getting-started
-RUN pip install dash==0.21.1  \
-    dash-renderer==0.13.0 \
-    dash-html-components==0.11.0 \
-    dash-core-components==0.23.0 \
-    plotly
 # Install itkwidgets extension
 RUN mkdir $REPO_DIR/.nodeenv && \
     cd $REPO_DIR/.nodeenv && \
-    pip install nodeenv==1.3.3 && \
+    pip install nodeenv && \
     nodeenv jupyterlab && \
     . jupyterlab/bin/activate && \
-    pip install itkwidgets==0.17.0 && \
+    pip install itkwidgets && \
     jupyter labextension install @jupyter-widgets/jupyterlab-manager itk-jupyter-widgets
 
 ################
 # CellProfiler #
 ################
+# This is for cell segmentation in 2D only
+# Once you have another method I would drop this section
 
 # Install CellProfiler
 RUN /bin/bash -c 'source /etc/profile.d/conda.sh && conda create -n cellprofiler python=2.7' && \
@@ -408,7 +360,6 @@ RUN /bin/bash -c 'source /etc/profile.d/conda.sh && conda activate cellprofiler 
     pip install ipykernel==4.10.0 pyzmq==18.0.2 && \
     python -m ipykernel install --user --name cellprofiler --display-name "Python (CP)"'
 
-
 #########
 # Login #
 #########
@@ -425,10 +376,6 @@ ENV SHELL /bin/bash
 # `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`
 # See here for discussion: https://github.com/h5py/h5py/issues/961
 ENV PYTHONWARNINGS "ignore::FutureWarning:h5py"
-
-# Create cli links at runtime instead of container buildtime due to source scripts being
-# in repos mounted at runtime
-CMD
 
 ###
 # END Cytokit
