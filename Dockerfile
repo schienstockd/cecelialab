@@ -384,8 +384,8 @@ ENV PYTHONWARNINGS "ignore::FutureWarning:h5py"
 ###
 # START cecelialab
 ###
-# Switch back to user
-USER $NB_UID
+# Switch to root
+USER root
 
 ARG CECELIA_REPO_URL="https://github.com/schienstockd/cecelia.git"
 
@@ -398,9 +398,11 @@ RUN fix-permissions $HOME/
 ###
 
 # Configure container startup
-# Run tini as PID 1
+RUN chmod a+x $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py && \
+    ln -s $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py /usr/local/bin/cytokit
+
+USER $NB_UID
+
 EXPOSE 8888
 ENTRYPOINT ["tini", "-g", "--"]
-CMD chmod a+x $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py && \
-    ln -s $CYTOKIT_REPO_DIR/python/pipeline/cytokit/cli/main.py /usr/local/bin/cytokit && \
-    ["start-notebook.sh"]
+CMD ["start-notebook.sh"]
