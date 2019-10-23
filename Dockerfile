@@ -141,6 +141,7 @@ RUN conda install --quiet --yes \
     'conda-forge::blas=*=openblas' \
     'bokeh' \
     'cloudpickle' \
+    'cudatoolkit' \
     'cython' \
     'dask' \
     'dill' \
