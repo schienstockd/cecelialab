@@ -158,6 +158,7 @@ RUN conda install --quiet --yes \
     'scikit-learn' \
     'scipy' \
     'seaborn' \
+    'spyder-kernels' \
     'sqlalchemy' \
     'statsmodels' \
     'sympy' \

@@ -17,3 +17,6 @@ elif [[ ! -z "${JUPYTER_ENABLE_LAB}" ]]; then
 else
   . /usr/local/bin/start.sh $wrapper jupyter notebook "$@"
 fi
+
+# start spyder kernel for remote access
+python -m spyder_kernels.console — matplotlib=’inline’ — ip=127.0.0.1 -f=./remotemachine.json
