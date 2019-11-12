@@ -302,6 +302,9 @@ RUN apt-get install -y libsm6 libxext6 libfontconfig1 libxrender1 python3-tk
 COPY cytokit-requirements.txt /tmp/
 RUN pip --no-cache-dir install --requirement /tmp/cytokit-requirements.txt
 
+# Create cytokit with the runtime user
+USER $NB_UID
+
 # Clone cytokit repo
 RUN cd $REPO_DIR && git clone $CYTOKIT_REPO_URL
 
@@ -310,6 +313,9 @@ RUN mkdir -p $(python -m site --user-site) && \
     echo "$CYTOKIT_REPO_DIR/python/pipeline" > $(python -m site --user-site)/local.pth && \
     echo "$CYTOKIT_REPO_DIR/python/notebooks/src" >> $(python -m site --user-site)/local.pth && \
     echo "$CYTOKIT_REPO_DIR/python/applications" >> $(python -m site --user-site)/local.pth
+
+# Switch back to root
+USER root
 
 #############
 # Frontends #
