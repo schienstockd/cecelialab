@@ -336,24 +336,24 @@ RUN mkdir $REPO_DIR/.nodeenv && \
 # This is for cell segmentation in 2D only
 # Once you have another method I would drop this section
 
-# # Install CellProfiler
-# RUN /bin/bash -c 'source /etc/profile.d/conda.sh && conda create -n cellprofiler python=2.7' && \
-#     apt-get update && \
-#     apt-get install -y openjdk-8-jdk libmysqlclient-dev
-# # Clone the repo, pin the version, and leave install as separate step
-# RUN cd $REPO_DIR && \
-#     git clone https://github.com/CellProfiler/CellProfiler.git && \
-#     cd CellProfiler && \
-#     git checkout v3.1.8
-# # Install numpy before CP b/c as of 07/2019, CP has a minimum numpy version but not a max requirement
-# # and the numpy>=1.17.x drops support for python 2 (causing errors in the CP install if not set to <1.17 first)
-# RUN cd $REPO_DIR/CellProfiler && \
-#     /bin/bash -c 'source /etc/profile.d/conda.sh && conda activate cellprofiler && \
-#     pip install numpy==1.16.4 PyYAML==3.13 tifffile==2019.7.2 && pip install -e .'
-# # Install CP kernel for jupyter (the pinned versions are necessary to avoid pyzmq errors for new kernel)
-# RUN /bin/bash -c 'source /etc/profile.d/conda.sh && conda activate cellprofiler && \
-#     pip install ipykernel==4.10.0 pyzmq==18.0.2 && \
-#     python -m ipykernel install --user --name cellprofiler --display-name "Python (CP)"'
+# Install CellProfiler
+RUN /bin/bash -c 'source /etc/profile.d/conda.sh && conda create -n cellprofiler python=2.7' && \
+    apt-get update && \
+    apt-get install -y openjdk-8-jdk libmysqlclient-dev
+# Clone the repo, pin the version, and leave install as separate step
+RUN cd $REPO_DIR && \
+    git clone https://github.com/CellProfiler/CellProfiler.git && \
+    cd CellProfiler && \
+    git checkout v3.1.8
+# Install numpy before CP b/c as of 07/2019, CP has a minimum numpy version but not a max requirement
+# and the numpy>=1.17.x drops support for python 2 (causing errors in the CP install if not set to <1.17 first)
+RUN cd $REPO_DIR/CellProfiler && \
+    /bin/bash -c 'source /etc/profile.d/conda.sh && conda activate cellprofiler && \
+    pip install numpy==1.16.4 PyYAML==3.13 tifffile==2019.7.2 && pip install -e .'
+# Install CP kernel for jupyter (the pinned versions are necessary to avoid pyzmq errors for new kernel)
+RUN /bin/bash -c 'source /etc/profile.d/conda.sh && conda activate cellprofiler && \
+    pip install ipykernel==4.10.0 pyzmq==18.0.2 && \
+    python -m ipykernel install --user --name cellprofiler --display-name "Python (CP)"'
 
 #########
 # Login #
