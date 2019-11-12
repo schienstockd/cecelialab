@@ -302,8 +302,9 @@ RUN apt-get install -y libsm6 libxext6 libfontconfig1 libxrender1 python3-tk
 COPY cytokit-requirements.txt /tmp/
 RUN pip --no-cache-dir install --requirement /tmp/cytokit-requirements.txt
 
-# Create cytokit with the runtime user
-USER $NB_UID
+# TO FIX: Create cytokit with the runtime user
+# Error during build: fatal: could not create work tree dir 'cytokit': Permission denied
+# USER $NB_UID
 
 # Clone cytokit repo
 RUN cd $REPO_DIR && git clone $CYTOKIT_REPO_URL
