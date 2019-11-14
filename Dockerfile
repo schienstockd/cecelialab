@@ -1,4 +1,5 @@
-ARG BASE_CONTAINER=tensorflow/tensorflow:1.14.0-gpu-py3
+# ARG BASE_CONTAINER=tensorflow/tensorflow:1.14.0-gpu-py3
+ARG BASE_CONTAINER=tensorflow/tensorflow:1.8.0-gpu-py3
 FROM $BASE_CONTAINER
 
 LABEL maintainer="Dominik Schienstock <schienstockd@student.unimelb.edu.au>"
